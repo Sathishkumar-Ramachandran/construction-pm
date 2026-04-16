@@ -1,0 +1,21 @@
+version: 1.0
+runtime: nodejs20
+build:
+  env:
+    - name: NEXT_PUBLIC_API_URL
+      value: https://REPLACE_WITH_BACKEND_URL/api/v1
+  commands:
+    build:
+      - npm ci
+      - npm run build
+run:
+  command: node .next/standalone/server.js
+  network:
+    port: 8080
+  env:
+    - name: PORT
+      value: "8080"
+    - name: HOSTNAME
+      value: "0.0.0.0"
+    - name: NODE_ENV
+      value: production
