@@ -1,0 +1,558 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Company {
+  id            Int      @id @default(autoincrement())
+  name          String
+  uen_no        String?  @unique
+  address       String?
+  contact_name  String?
+  contact_phone String?
+  contact_email String?
+  logo_path     String?
+  is_active     Boolean  @default(true)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  users    User[]
+  projects Project[]
+  workers  Worker[]
+
+  @@map("companies")
+}
+
+model User {
+  id                        Int       @id @default(autoincrement())
+  company_id                Int
+  email                     String    @unique
+  password_hash             String
+  full_name                 String
+  phone                     String?
+  role                      String
+  avatar_path               String?
+  invite_token              String?
+  invite_expires_at         DateTime?
+  is_invite_accepted        Boolean   @default(false)
+  is_active                 Boolean   @default(true)
+  last_login_at             DateTime?
+  password_reset_token      String?
+  password_reset_expires_at DateTime?
+  created_by                Int?
+  created_at                DateTime  @default(now())
+  updated_at                DateTime  @updatedAt
+
+  company        Company        @relation(fields: [company_id], references: [id])
+  refresh_tokens RefreshToken[]
+  project_team   ProjectTeam[]  @relation("TeamUser")
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id         Int       @id @default(autoincrement())
+  user_id    Int
+  token_hash String    @unique
+  expires_at DateTime
+  revoked_at DateTime?
+  created_at DateTime  @default(now())
+
+  user User @relation(fields: [user_id], references: [id])
+
+  @@map("refresh_tokens")
+}
+
+model Project {
+  id                 Int       @id @default(autoincrement())
+  company_id         Int
+  project_no         String
+  name               String
+  project_type       String
+  hdb_block          String
+  hdb_street         String
+  hdb_town           String
+  postal_code        String?
+  town_council       String
+  total_floors       Int?
+  total_blocks       Int?      @default(1)
+  scope_description  String?
+  contract_value     Float?
+  planned_start_date DateTime? @db.Date
+  planned_end_date   DateTime? @db.Date
+  actual_start_date  DateTime? @db.Date
+  actual_end_date    DateTime? @db.Date
+  pm_id              Int?
+  supervisor_id      Int?
+  safety_officer_id  Int?
+  status             String    @default("draft")
+  current_phase      Int?      @default(1)
+  tc_reference_no    String?
+  created_by         Int
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+
+  company              Company               @relation(fields: [company_id], references: [id])
+  phases               ProjectPhase[]
+  team                 ProjectTeam[]
+  permits              Permit[]
+  documents            Document[]
+  material_submittals  MaterialSubmittal[]
+  daily_reports        DailyReport[]
+  inspections          Inspection[]
+  defects              Defect[]
+  toolbox_meetings     ToolboxMeeting[]
+  photos               Photo[]
+  site_inspections     SiteInspection[]
+  risk_assessments     RiskAssessment[]
+  project_workers      ProjectWorker[]
+  material_consumption MaterialConsumption[]
+
+  @@map("projects")
+}
+
+model ProjectTeam {
+  id          Int      @id @default(autoincrement())
+  project_id  Int
+  user_id     Int
+  team_role   String
+  assigned_at DateTime @default(now())
+  assigned_by Int?
+  is_active   Boolean  @default(true)
+
+  project Project @relation(fields: [project_id], references: [id])
+  user    User    @relation("TeamUser", fields: [user_id], references: [id])
+
+  @@map("project_team")
+}
+
+model ProjectPhase {
+  id                 Int       @id @default(autoincrement())
+  project_id         Int
+  phase_no           Int
+  phase_name         String
+  status             String    @default("locked")
+  completion_pct     Int       @default(0)
+  planned_start_date DateTime? @db.Date
+  planned_end_date   DateTime? @db.Date
+  actual_start_date  DateTime? @db.Date
+  actual_end_date    DateTime? @db.Date
+  notes              String?
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+
+  project Project     @relation(fields: [project_id], references: [id])
+  tasks   PhaseTask[]
+
+  @@map("project_phases")
+}
+
+model PhaseTask {
+  id                    Int       @id @default(autoincrement())
+  phase_id              Int
+  task_code             String
+  task_type             String
+  title                 String
+  description           String?
+  status                String    @default("pending")
+  requires_photo        Boolean   @default(true)
+  requires_before_photo Boolean   @default(false)
+  requires_after_photo  Boolean   @default(false)
+  assigned_to_id        Int?
+  started_at            DateTime?
+  completed_at          DateTime?
+  completed_by          Int?
+  location_zone         String?
+  notes                 String?
+  sort_order            Int       @default(0)
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+
+  phase ProjectPhase @relation(fields: [phase_id], references: [id])
+
+  @@map("phase_tasks")
+}
+
+model Permit {
+  id                Int       @id @default(autoincrement())
+  project_id        Int
+  permit_type       String
+  title             String
+  reference_no      String?
+  issuing_authority String?
+  status            String    @default("draft")
+  applied_date      DateTime? @db.Date
+  approved_date     DateTime? @db.Date
+  expiry_date       DateTime? @db.Date
+  rejection_reason  String?
+  conditions        String?
+  document_path     String?
+  submitted_by      Int?
+  approved_by       Int?
+  notes             String?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  project Project @relation(fields: [project_id], references: [id])
+
+  @@map("permits")
+}
+
+model Document {
+  id               Int       @id @default(autoincrement())
+  project_id       Int
+  phase_id         Int?
+  doc_type         String
+  title            String
+  version          String    @default("v1.0")
+  status           String    @default("draft")
+  file_path        String?
+  file_name        String?
+  file_size_kb     Int?
+  created_by       Int
+  submitted_at     DateTime?
+  approved_by      Int?
+  approved_at      DateTime?
+  rejection_reason String?
+  remarks          String?
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+
+  project Project @relation(fields: [project_id], references: [id])
+
+  @@map("documents")
+}
+
+model MaterialSubmittal {
+  id                Int       @id @default(autoincrement())
+  project_id        Int
+  material_category String
+  brand             String
+  product_name      String
+  product_code      String?
+  colour_code       String?
+  colour_name       String?
+  tc_colour_ref     String?
+  estimated_qty     Float
+  qty_unit          String
+  application_area  String?
+  status            String    @default("draft")
+  submitted_by      Int?
+  submitted_at      DateTime?
+  approved_by       Int?
+  approved_at       DateTime?
+  rejection_reason  String?
+  tds_path          String?
+  sds_path          String?
+  notes             String?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  project     Project               @relation(fields: [project_id], references: [id])
+  consumption MaterialConsumption[]
+
+  @@map("material_submittals")
+}
+
+model MaterialConsumption {
+  id           Int      @id @default(autoincrement())
+  project_id   Int
+  phase_id     Int?
+  material_id  Int
+  date_used    DateTime @db.Date
+  qty_used     Float
+  qty_unit     String
+  area_applied String?
+  batch_no     String?
+  recorded_by  Int
+  notes        String?
+  created_at   DateTime @default(now())
+
+  project  Project           @relation(fields: [project_id], references: [id])
+  material MaterialSubmittal @relation(fields: [material_id], references: [id])
+
+  @@map("material_consumption")
+}
+
+model Worker {
+  id              Int       @id @default(autoincrement())
+  company_id      Int
+  name            String
+  work_permit_no  String?
+  fin_no          String?   @unique
+  nationality     String?
+  trade           String
+  wah_certified   Boolean   @default(false)
+  wah_cert_expiry DateTime? @db.Date
+  contact_phone   String?
+  is_active       Boolean   @default(true)
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  company            Company            @relation(fields: [company_id], references: [id])
+  project_workers    ProjectWorker[]
+  toolbox_attendance ToolboxAttendance[]
+
+  @@map("workers")
+}
+
+model ProjectWorker {
+  id         Int       @id @default(autoincrement())
+  project_id Int
+  worker_id  Int
+  start_date DateTime? @db.Date
+  end_date   DateTime? @db.Date
+  is_active  Boolean   @default(true)
+
+  project Project @relation(fields: [project_id], references: [id])
+  worker  Worker  @relation(fields: [worker_id], references: [id])
+
+  @@map("project_workers")
+}
+
+model ToolboxMeeting {
+  id                 Int       @id @default(autoincrement())
+  project_id         Int
+  meeting_date       DateTime  @db.Date
+  meeting_time       String?
+  conducted_by       Int
+  location           String?
+  topics_covered     String
+  work_plan_today    String?
+  hazards_discussed  String?
+  controls_discussed String?
+  total_workers      Int?
+  remarks            String?
+  signed_off_by      Int?
+  signed_off_at      DateTime?
+  document_path      String?
+  created_at         DateTime  @default(now())
+
+  project    Project             @relation(fields: [project_id], references: [id])
+  attendance ToolboxAttendance[]
+
+  @@map("toolbox_meetings")
+}
+
+model ToolboxAttendance {
+  id          Int      @id @default(autoincrement())
+  meeting_id  Int
+  worker_id   Int?
+  worker_name String?
+  signed_at   DateTime @default(now())
+
+  meeting ToolboxMeeting @relation(fields: [meeting_id], references: [id])
+  worker  Worker?        @relation(fields: [worker_id], references: [id])
+
+  @@map("toolbox_attendance")
+}
+
+model SiteInspection {
+  id                    Int       @id @default(autoincrement())
+  project_id            Int
+  inspection_date       DateTime  @db.Date
+  conducted_by          Int
+  overall_condition     String?
+  ext_paint_condition   String?
+  ext_plaster_condition String?
+  ext_crack_severity    String?
+  spalling_present      Boolean   @default(false)
+  spalling_description  String?
+  int_paint_condition   String?
+  scaffold_type         String?
+  access_notes          String?
+  general_remarks       String?
+  status                String    @default("draft")
+  document_id           Int?
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+
+  project Project @relation(fields: [project_id], references: [id])
+
+  @@map("site_inspections")
+}
+
+model Inspection {
+  id                         Int       @id @default(autoincrement())
+  project_id                 Int
+  phase_id                   Int?
+  inspection_type            String
+  title                      String
+  scheduled_date             DateTime? @db.Date
+  scheduled_time             String?
+  actual_date                DateTime? @db.Date
+  actual_time                String?
+  location                   String?
+  conducted_by               Int
+  external_inspector_name    String?
+  external_inspector_org     String?
+  external_inspector_contact String?
+  status                     String    @default("scheduled")
+  overall_remarks            String?
+  signed_off_by_name         String?
+  signed_off_at              DateTime?
+  signature_path             String?
+  created_at                 DateTime  @default(now())
+  updated_at                 DateTime  @updatedAt
+
+  project Project  @relation(fields: [project_id], references: [id])
+  defects Defect[]
+
+  @@map("inspections")
+}
+
+model Defect {
+  id                   Int       @id @default(autoincrement())
+  project_id           Int
+  inspection_id        Int?
+  phase_id             Int?
+  defect_no            String?
+  location_zone        String
+  location_description String?
+  defect_type          String
+  severity             String    @default("medium")
+  description          String?
+  status               String    @default("open")
+  assigned_to_id       Int?
+  raised_at            DateTime  @default(now())
+  raised_by            Int
+  target_rectify_date  DateTime? @db.Date
+  rectified_at         DateTime?
+  rectified_by         Int?
+  verified_by          Int?
+  verified_at          DateTime?
+  verification_remarks String?
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+
+  project    Project     @relation(fields: [project_id], references: [id])
+  inspection Inspection? @relation(fields: [inspection_id], references: [id])
+
+  @@map("defects")
+}
+
+model DailyReport {
+  id                 Int       @id @default(autoincrement())
+  project_id         Int
+  phase_id           Int?
+  report_date        DateTime  @db.Date
+  supervisor_id      Int
+  weather            String
+  temperature_c      Int?
+  workers_present    Int       @default(0)
+  supervisor_present Boolean   @default(true)
+  work_done_summary  String?
+  areas_worked       String?
+  materials_used     String?
+  has_issues         Boolean   @default(false)
+  issues_description String?
+  delay_reason       String?
+  next_day_plan      String?
+  status             String    @default("draft")
+  submitted_at       DateTime?
+  acknowledged_by    Int?
+  acknowledged_at    DateTime?
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+
+  project Project @relation(fields: [project_id], references: [id])
+
+  @@map("daily_reports")
+}
+
+model Photo {
+  id             Int      @id @default(autoincrement())
+  project_id     Int
+  phase_id       Int?
+  entity_type    String
+  entity_id      Int?
+  photo_type     String
+  file_path      String
+  file_name      String?
+  file_size_kb   Int?
+  thumbnail_path String?
+  caption        String?
+  taken_by       Int
+  taken_at       DateTime @default(now())
+  latitude       Float?
+  longitude      Float?
+  created_at     DateTime @default(now())
+
+  project Project @relation(fields: [project_id], references: [id])
+
+  @@map("photos")
+}
+
+model Notification {
+  id          Int      @id @default(autoincrement())
+  user_id     Int
+  type        String
+  title       String
+  message     String
+  is_read     Boolean  @default(false)
+  entity_type String?
+  entity_id   Int?
+  created_at  DateTime @default(now())
+
+  @@map("notifications")
+}
+
+model RiskAssessment {
+  id              Int       @id @default(autoincrement())
+  project_id      Int
+  document_id     Int?
+  ra_no           String?
+  revision_no     String    @default("Rev 0")
+  assessment_date DateTime? @db.Date
+  reviewed_by     Int?
+  approved_by     Int?
+  status          String    @default("draft")
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  project    Project      @relation(fields: [project_id], references: [id])
+  line_items RALineItem[]
+
+  @@map("risk_assessments")
+}
+
+model RALineItem {
+  id                  Int     @id @default(autoincrement())
+  ra_id               Int
+  activity            String
+  hazard              String
+  possible_outcome    String?
+  likelihood          Int
+  severity            Int
+  initial_risk_level  String
+  control_measures    String
+  residual_likelihood Int?
+  residual_severity   Int?
+  residual_risk_level String?
+  responsible_person  String?
+  ppe_required        String?
+  sort_order          Int     @default(0)
+
+  ra RiskAssessment @relation(fields: [ra_id], references: [id])
+
+  @@map("ra_line_items")
+}
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  user_id     Int?
+  action      String
+  entity_type String
+  entity_id   Int?
+  old_value   String?
+  new_value   String?
+  ip_address  String?
+  user_agent  String?
+  created_at  DateTime @default(now())
+
+  @@map("audit_logs")
+}

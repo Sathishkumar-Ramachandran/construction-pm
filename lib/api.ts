@@ -1,12 +1,4 @@
-/**
- * API client — thin wrapper around fetch pointing to FastAPI backend.
- * Handles JWT token injection and refresh automatically.
- */
-
-const API_BASE = "http://13.206.144.93:8000/api/v1";
-//process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
-// IP CHANGED
-// ─── Token helpers (client-side only) ────────────────────────────────────────
+const API_BASE = "/api/v1";
 
 export const TokenStore = {
   getAccess: (): string | null =>
@@ -31,8 +23,6 @@ export const TokenStore = {
     localStorage.setItem("user", JSON.stringify(user));
   },
 };
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface User {
   id: number;
@@ -59,8 +49,6 @@ export interface PaginatedResponse<T = unknown> {
   pagination: { page: number; limit: number; total: number; total_pages: number };
 }
 
-// ─── Core fetch wrapper ───────────────────────────────────────────────────────
-
 async function apiFetch<T>(
   path: string,
   options: RequestInit & { skipAuth?: boolean } = {}
@@ -84,7 +72,6 @@ async function apiFetch<T>(
     headers,
   });
 
-  // Auto-refresh on 401
   if (response.status === 401 && !skipAuth) {
     const refreshed = await tryRefreshToken();
     if (refreshed) {
@@ -137,8 +124,6 @@ export class APIError extends Error {
     this.data = data;
   }
 }
-
-// ─── API methods ──────────────────────────────────────────────────────────────
 
 export const api = {
   get: <T>(path: string) => apiFetch<T>(path, { method: "GET" }),
