@@ -1,8 +1,8 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM = process.env.FROM_EMAIL || "noreply@construction-pm.com";
-const APP_URL = process.env.APP_URL || "http://localhost:3000";
+const resend = new Resend("re_your_resend_key");
+const FROM = "noreply@construction-pm.com";
+const APP_URL = "http://localhost:3000";
 
 export async function sendInviteEmail(
   toEmail: string,

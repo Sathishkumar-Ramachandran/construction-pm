@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     const refreshHash = hashToken(rawRefresh);
 
     const expireAt = new Date();
-    expireAt.setDate(expireAt.getDate() + parseInt(process.env.REFRESH_TOKEN_EXPIRE_DAYS || "30"));
+    expireAt.setDate(expireAt.getDate() + 30);
 
     await prisma.refreshToken.create({
       data: { user_id: user.id, token_hash: refreshHash, expires_at: expireAt },

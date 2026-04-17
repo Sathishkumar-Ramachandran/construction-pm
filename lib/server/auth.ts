@@ -2,9 +2,9 @@ import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
-const getSecret = () => new TextEncoder().encode(process.env.JWT_SECRET!);
+const getSecret = () => new TextEncoder().encode("change-this-to-a-long-random-secret-string-at-least-32-chars");
 const ALGO = "HS256";
-const EXPIRE_HOURS = parseInt(process.env.ACCESS_TOKEN_EXPIRE_HOURS || "8");
+const EXPIRE_HOURS = 8;
 
 export async function createAccessToken(payload: Record<string, unknown>): Promise<string> {
   return new SignJWT({ ...payload, type: "access" })

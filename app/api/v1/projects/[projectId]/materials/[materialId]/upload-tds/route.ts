@@ -24,7 +24,7 @@ export async function POST(
     const file = formData.get("file") as File | null;
     if (!file) return err("No file provided");
 
-    const uploadDir = join(process.env.UPLOAD_DIR || "./uploads", String(user.company_id), String(pid), "materials");
+    const uploadDir = join("./uploads", String(user.company_id), String(pid), "materials");
     await mkdir(uploadDir, { recursive: true });
 
     const ext = file.name.split(".").pop() || "bin";

@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from "uuid";
 
 const VALID_PHOTO_TYPES = new Set(["before", "during", "after", "defect", "safety", "site_condition", "material", "permit_doc", "general"]);
 const VALID_ENTITY_TYPES = new Set(["task", "inspection", "defect", "toolbox_meeting", "site_inspection", "equipment", "daily_report", "material", "permit", "general"]);
-const MAX_SIZE_MB = parseFloat(process.env.MAX_PHOTO_SIZE_MB ?? "10");
+const MAX_SIZE_MB = 10;
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
   const user = await getAuthUser(request);
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   const uploadDir = path.join(
-    process.env.UPLOAD_DIR ?? "./uploads",
+    "./uploads",
     String(user.company_id),
     String(pid),
     "photos",

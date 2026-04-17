@@ -24,11 +24,11 @@ export async function POST(
     const file = formData.get("file") as File | null;
     if (!file) return err("No file provided");
 
-    const maxMB = parseInt(process.env.MAX_DOC_SIZE_MB || "25");
+    const maxMB = 25;
     const sizeMB = file.size / (1024 * 1024);
     if (sizeMB > maxMB) return err(`File too large. Max ${maxMB}MB`);
 
-    const uploadDir = join(process.env.UPLOAD_DIR || "./uploads", String(user.company_id), String(pid), "documents");
+    const uploadDir = join("./uploads", String(user.company_id), String(pid), "documents");
     await mkdir(uploadDir, { recursive: true });
 
     const ext = file.name.split(".").pop() || "bin";
