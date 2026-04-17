@@ -3,7 +3,8 @@
  * Handles JWT token injection and refresh automatically.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const API_BASE = "http://13.206.144.93:8000/api/v1";
+//process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 // IP CHANGED
 // ─── Token helpers (client-side only) ────────────────────────────────────────
 
