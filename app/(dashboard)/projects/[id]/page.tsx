@@ -15,6 +15,7 @@ import {
   ArrowLeft, MapPin, Calendar, CheckCircle2, Clock, Lock,
   AlertTriangle, ClipboardList, FileText, Package,
   Shield, Wrench, ChevronRight, Plus, Unlock,
+  UserCheck, HardHat, Users, BarChart3,
 } from "lucide-react";
 
 interface Phase {
@@ -282,10 +283,14 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         {/* Quick Actions */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: "Permits", icon: Shield, href: `/projects/${id}/permits`, color: "text-yellow-600 bg-yellow-50" },
-            { label: "Documents", icon: FileText, href: `/projects/${id}/documents`, color: "text-blue-600 bg-blue-50" },
-            { label: "Materials", icon: Package, href: `/projects/${id}/materials`, color: "text-purple-600 bg-purple-50" },
-            { label: "Defects", icon: AlertTriangle, href: `/projects/${id}/defects`, color: "text-red-600 bg-red-50" },
+            { label: "Attendance",   icon: UserCheck,     href: `/projects/${id}/attendance`,   color: "text-green-600 bg-green-50" },
+            { label: "Team",         icon: Users,         href: `/projects/${id}/team`,          color: "text-indigo-600 bg-indigo-50" },
+            { label: "Assignments",  icon: HardHat,       href: `/projects/${id}/assignments`,   color: "text-orange-600 bg-orange-50" },
+            { label: "Inventory",    icon: Package,       href: `/projects/${id}/inventory`,     color: "text-purple-600 bg-purple-50" },
+            { label: "Permits",      icon: Shield,        href: `/projects/${id}/permits`,       color: "text-yellow-600 bg-yellow-50" },
+            { label: "Documents",    icon: FileText,      href: `/projects/${id}/documents`,     color: "text-blue-600 bg-blue-50" },
+            { label: "Materials",    icon: BarChart3,     href: `/projects/${id}/materials`,     color: "text-teal-600 bg-teal-50" },
+            { label: "Defects",      icon: AlertTriangle, href: `/projects/${id}/defects`,       color: "text-red-600 bg-red-50" },
           ].map((item) => (
             <Link key={item.href} href={item.href}>
               <Card className="hover:shadow-md hover:border-gray-300 transition-all cursor-pointer">

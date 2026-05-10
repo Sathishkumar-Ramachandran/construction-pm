@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import useSWR, { mutate } from "swr";
 import { api, APIResponse } from "@/lib/api";
 import { Header } from "@/components/layout/header";
@@ -27,8 +28,24 @@ const TRADES = [
   { value: "others", label: "Others" },
 ];
 
+const NATIONALITIES = [
+  "Singapore Citizen",
+  "Singapore PR",
+  "Malaysian",
+  "Bangladeshi",
+  "Indian",
+  "Myanmar",
+  "Chinese (PRC)",
+  "Sri Lankan",
+  "Filipino",
+  "Thai",
+  "Indonesian",
+  "Others",
+];
+
 export default function WorkersPage() {
   const { user } = useAuthStore();
+  const router = useRouter();
   const [showAdd, setShowAdd] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -97,7 +114,11 @@ export default function WorkersPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {workers.map((w) => (
-              <Card key={w.id} className={!w.is_active ? "opacity-60" : ""}>
+              <Card
+                key={w.id}
+                className={`cursor-pointer hover:shadow-md transition-shadow ${!w.is_active ? "opacity-60" : ""}`}
+                onClick={() => router.push(`/workers/${w.id}`)}
+              >
                 <CardContent className="p-5">
                   <div className="flex items-start justify-between mb-3">
                     <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -130,7 +151,7 @@ export default function WorkersPage() {
                   {canDeactivate && w.is_active && (
                     <div className="mt-3 pt-3 border-t border-gray-100">
                       <button
-                        onClick={() => handleDeactivate(w.id)}
+                        onClick={(e) => { e.stopPropagation(); handleDeactivate(w.id); }}
                         className="text-xs text-red-500 hover:text-red-700 transition-colors"
                       >
                         Deactivate
@@ -162,12 +183,14 @@ export default function WorkersPage() {
             >
               {TRADES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
             </Select>
-            <Input
+            <Select
               label="Nationality"
               value={form.nationality}
               onChange={(e) => setForm((f) => ({ ...f, nationality: e.target.value }))}
-              placeholder="e.g. Singaporean"
-            />
+            >
+              <option value="">— Select —</option>
+              {NATIONALITIES.map((n) => <option key={n} value={n}>{n}</option>)}
+            </Select>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input

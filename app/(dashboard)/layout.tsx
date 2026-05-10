@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/auth-store";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Spinner } from "@/components/ui/loading";
+import { OverdueOrdersBanner } from "@/components/layout/overdue-orders-banner";
 
 // Context so Header anywhere in the dashboard can trigger the sidebar
 const SidebarToggleContext = createContext<() => void>(() => {});
@@ -35,6 +36,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="flex h-full">
         <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <main className="flex-1 md:ml-64 flex flex-col min-h-screen overflow-auto bg-gray-50">
+          <OverdueOrdersBanner />
           {children}
         </main>
       </div>

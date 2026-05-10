@@ -6,13 +6,22 @@ import { useAuthStore } from "@/lib/auth-store";
 import {
   LayoutDashboard, FolderKanban, Users, HardHat,
   LogOut, Building2, ChevronRight, X,
+  Package, ShoppingCart, UserCheck, Shield,
+  Activity, ClipboardList, Truck,
 } from "lucide-react";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/projects", label: "Projects", icon: FolderKanban },
+  { href: "/inventory", label: "Inventory", icon: Package, roles: ["super_admin","company_admin","project_manager"] },
+  { href: "/orders", label: "Orders", icon: ShoppingCart, roles: ["super_admin","company_admin","project_manager"] },
+  { href: "/attendance", label: "Attendance", icon: UserCheck, roles: ["super_admin","company_admin","project_manager","supervisor"] },
   { href: "/workers", label: "Workers", icon: HardHat, roles: ["super_admin","company_admin","project_manager","supervisor"] },
+  { href: "/suppliers", label: "Suppliers", icon: Truck, roles: ["super_admin","company_admin","project_manager"] },
   { href: "/users", label: "Users", icon: Users, roles: ["super_admin","company_admin"] },
+  { href: "/admin", label: "Command Centre", icon: Shield, roles: ["super_admin","company_admin"] },
+  { href: "/admin/audit", label: "Audit Trail", icon: Activity, roles: ["super_admin","company_admin"] },
+  { href: "/admin/logs", label: "System Logs", icon: ClipboardList, roles: ["super_admin"] },
 ];
 
 interface SidebarProps {

@@ -5,7 +5,7 @@ export async function GET(request: Request) {
   try {
     const user = await getAuthUser(request);
     if (!user) return err("Unauthorized", 401);
-    if (!["super_admin", "company_admin"].includes(user.role)) {
+    if (!["super_admin", "company_admin", "project_manager"].includes(user.role)) {
       return err("Insufficient permissions", 403);
     }
 

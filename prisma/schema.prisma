@@ -7,6 +7,147 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  STATUS_CHANGE
+  APPROVE
+  REJECT
+  SUBMIT
+  SIGN_OFF
+  LOGIN
+  LOGOUT
+  EXPORT
+  BULK_UPDATE
+  ASSIGN
+  UNASSIGN
+  ALLOCATE
+  RECEIVE
+  MARK_ATTENDANCE
+}
+
+enum LogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+  CRITICAL
+}
+
+enum LogCategory {
+  API_REQUEST
+  API_ERROR
+  AUTH_EVENT
+  CRON_JOB
+  EMAIL_SENT
+  NOTIFICATION
+  BACKGROUND_JOB
+  SYSTEM
+}
+
+enum InventoryCategory {
+  PRIMER
+  SEALER
+  FINISHING_PAINT
+  WEATHERCOAT
+  ELASTOMERIC
+  EMULSION
+  FILLER
+  SEALANT
+  PROTECTIVE_COATING
+  SCAFFOLD_MATERIAL
+  SAFETY_EQUIPMENT
+  TOOLS
+  MISCELLANEOUS
+}
+
+enum InventoryUnit {
+  LITRE
+  KG
+  BAG
+  TIN
+  ROLL
+  PIECE
+  SET
+  M2
+  M3
+  BOX
+}
+
+enum TransactionType {
+  PURCHASE_RECEIPT
+  PROJECT_ALLOCATION
+  PROJECT_RETURN
+  USAGE_RECORD
+  MANUAL_ADJUSTMENT
+  WRITE_OFF
+  OPENING_STOCK
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  ORDERED
+  PARTIAL
+  DELIVERED
+  CANCELLED
+}
+
+enum EmployeeType {
+  USER
+  WORKER
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  HALF_DAY
+  MC
+  ANNUAL_LEAVE
+  PUBLIC_HOLIDAY
+  OFF_DAY
+}
+
+enum WorkerProjectRole {
+  PAINTER
+  PLASTERER
+  SCAFFOLDER
+  WATERPROOFER
+  GENERAL_WORKER
+  SUPERVISOR
+  SAFETY_OFFICER
+}
+
+enum WorkerAssignmentStatus {
+  ACTIVE
+  COMPLETED
+  TRANSFERRED
+  TERMINATED
+}
+
+enum ProjectApprovalType {
+  TC_APPROVAL
+  HDB_APPROVAL
+  TOWN_COUNCIL_CLEARANCE
+  NEA_CLEARANCE
+  BCA_APPROVAL
+  FIRE_SAFETY_CLEARANCE
+  NOISE_EXEMPTION
+}
+
+enum ProjectApprovalStatus {
+  NOT_REQUIRED
+  PENDING
+  SUBMITTED
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+// ─── Core Models ──────────────────────────────────────────────────────────────
+
 model Company {
   id            Int      @id @default(autoincrement())
   name          String
@@ -23,6 +164,12 @@ model Company {
   users    User[]
   projects Project[]
   workers  Worker[]
+
+  audit_logs         AuditLog[]
+  suppliers          Supplier[]
+  inventory_items    InventoryItem[]
+  purchase_orders    PurchaseOrder[]
+  attendance_records AttendanceRecord[]
 
   @@map("companies")
 }
@@ -50,6 +197,16 @@ model User {
   company        Company        @relation(fields: [company_id], references: [id])
   refresh_tokens RefreshToken[]
   project_team   ProjectTeam[]  @relation("TeamUser")
+
+  audit_logs              AuditLog[]         @relation("AuditActor")
+  attendance_as_employee  AttendanceRecord[] @relation("UserAttendance")
+  attendance_marked       AttendanceRecord[] @relation("AttendanceMarker")
+  inventory_transactions  InventoryTransaction[]
+  project_inventory_alloc ProjectInventory[]
+  usage_records           InventoryUsageRecord[]
+  purchase_orders         PurchaseOrder[]
+  worker_assignments_made WorkerProjectAssignment[]
+  project_approvals       ProjectApproval[]
 
   @@map("users")
 }
@@ -111,6 +268,13 @@ model Project {
   risk_assessments     RiskAssessment[]
   project_workers      ProjectWorker[]
   material_consumption MaterialConsumption[]
+
+  inventory_items           ProjectInventory[]
+  purchase_orders           PurchaseOrder[]
+  attendance_records        AttendanceRecord[]
+  approvals                 ProjectApproval[]
+  worker_assignments        WorkerProjectAssignment[]
+  inventory_transactions    InventoryTransaction[]
 
   @@map("projects")
 }
@@ -254,6 +418,7 @@ model MaterialSubmittal {
 
   project     Project               @relation(fields: [project_id], references: [id])
   consumption MaterialConsumption[]
+  project_inventory ProjectInventory[]
 
   @@map("material_submittals")
 }
@@ -296,6 +461,9 @@ model Worker {
   company            Company            @relation(fields: [company_id], references: [id])
   project_workers    ProjectWorker[]
   toolbox_attendance ToolboxAttendance[]
+
+  attendance_records  AttendanceRecord[]
+  project_assignments WorkerProjectAssignment[]
 
   @@map("workers")
 }
@@ -542,17 +710,284 @@ model RALineItem {
   @@map("ra_line_items")
 }
 
-model AuditLog {
-  id          Int      @id @default(autoincrement())
-  user_id     Int?
-  action      String
-  entity_type String
-  entity_id   Int?
-  old_value   String?
-  new_value   String?
-  ip_address  String?
-  user_agent  String?
-  created_at  DateTime @default(now())
+// ─── Audit & Logging Models ───────────────────────────────────────────────────
 
+model AuditLog {
+  id             Int         @id @default(autoincrement())
+  company_id     Int
+  company        Company     @relation(fields: [company_id], references: [id])
+  actor_id       Int
+  actor          User        @relation("AuditActor", fields: [actor_id], references: [id])
+  actor_role     String
+  actor_name     String
+  action         AuditAction
+  entity_type    String
+  entity_id      String
+  entity_label   String?
+  project_id     Int?
+  phase_id       Int?
+  previous_data  Json?
+  new_data       Json?
+  changed_fields String[]
+  change_reason  String?
+  ip_address     String?
+  user_agent     String?
+  session_id     String?
+  created_at     DateTime    @default(now())
+
+  @@index([company_id, created_at])
+  @@index([company_id, entity_type, entity_id])
+  @@index([company_id, actor_id])
+  @@index([company_id, project_id])
   @@map("audit_logs")
+}
+
+model AppLog {
+  id             Int         @id @default(autoincrement())
+  company_id     Int?
+  level          LogLevel
+  category       LogCategory
+  message        String
+  details        Json?
+  user_id        Int?
+  request_path   String?
+  request_method String?
+  status_code    Int?
+  duration_ms    Int?
+  created_at     DateTime    @default(now())
+
+  @@index([company_id, created_at])
+  @@index([level, created_at])
+  @@map("app_logs")
+}
+
+// ─── Supplier Model ───────────────────────────────────────────────────────────
+
+model Supplier {
+  id             Int             @id @default(autoincrement())
+  company_id     Int
+  company        Company         @relation(fields: [company_id], references: [id])
+  name           String
+  contact_person String?
+  phone          String?
+  email          String?
+  address        String?
+  notes          String?
+  is_active      Boolean         @default(true)
+  created_at     DateTime        @default(now())
+  updated_at     DateTime        @updatedAt
+
+  purchase_orders PurchaseOrder[]
+
+  @@map("suppliers")
+}
+
+// ─── Inventory Models ─────────────────────────────────────────────────────────
+
+model InventoryItem {
+  id            Int               @id @default(autoincrement())
+  company_id    Int
+  company       Company           @relation(fields: [company_id], references: [id])
+  code          String
+  name          String
+  brand         String?
+  category      InventoryCategory
+  unit          InventoryUnit
+  unit_cost     Decimal?          @db.Decimal(10, 2)
+  qty_on_hand   Decimal           @default(0) @db.Decimal(10, 3)
+  qty_allocated Decimal           @default(0) @db.Decimal(10, 3)
+  reorder_level Decimal           @default(0) @db.Decimal(10, 3)
+  location      String?
+  description   String?
+  is_active     Boolean           @default(true)
+  created_at    DateTime          @default(now())
+  updated_at    DateTime          @updatedAt
+
+  transactions   InventoryTransaction[]
+  project_stock  ProjectInventory[]
+  order_lines    PurchaseOrderLine[]
+
+  @@unique([company_id, code])
+  @@map("inventory_items")
+}
+
+model InventoryTransaction {
+  id                Int             @id @default(autoincrement())
+  company_id        Int
+  inventory_item_id Int
+  inventory_item    InventoryItem   @relation(fields: [inventory_item_id], references: [id])
+  type              TransactionType
+  qty               Decimal         @db.Decimal(10, 3)
+  qty_before        Decimal         @db.Decimal(10, 3)
+  qty_after         Decimal         @db.Decimal(10, 3)
+  project_id        Int?
+  project           Project?        @relation(fields: [project_id], references: [id])
+  phase_id          Int?
+  order_id          Int?
+  purchase_order    PurchaseOrder?  @relation(fields: [order_id], references: [id])
+  reference         String?
+  notes             String?
+  recorded_by_id    Int
+  recorded_by       User            @relation(fields: [recorded_by_id], references: [id])
+  created_at        DateTime        @default(now())
+
+  @@map("inventory_transactions")
+}
+
+model ProjectInventory {
+  id                    Int                @id @default(autoincrement())
+  project_id            Int
+  project               Project            @relation(fields: [project_id], references: [id])
+  inventory_item_id     Int
+  inventory_item        InventoryItem      @relation(fields: [inventory_item_id], references: [id])
+  phase_id              Int?
+  material_submittal_id Int?
+  material_submittal    MaterialSubmittal? @relation(fields: [material_submittal_id], references: [id])
+  qty_allocated         Decimal            @default(0) @db.Decimal(10, 3)
+  qty_used              Decimal            @default(0) @db.Decimal(10, 3)
+  qty_returned          Decimal            @default(0) @db.Decimal(10, 3)
+  allocated_by_id       Int
+  allocated_by          User               @relation(fields: [allocated_by_id], references: [id])
+  created_at            DateTime           @default(now())
+  updated_at            DateTime           @updatedAt
+
+  usage_records InventoryUsageRecord[]
+
+  @@map("project_inventory")
+}
+
+model InventoryUsageRecord {
+  id                   Int              @id @default(autoincrement())
+  project_inventory_id Int
+  project_inventory    ProjectInventory @relation(fields: [project_inventory_id], references: [id])
+  project_id           Int
+  phase_id             Int?
+  date                 DateTime         @default(now())
+  qty_used             Decimal          @db.Decimal(10, 3)
+  area_covered         Decimal?         @db.Decimal(10, 2)
+  batch_number         String?
+  notes                String?
+  recorded_by_id       Int
+  recorded_by          User             @relation(fields: [recorded_by_id], references: [id])
+  created_at           DateTime         @default(now())
+
+  @@map("inventory_usage_records")
+}
+
+// ─── Purchase Order Models ────────────────────────────────────────────────────
+
+model PurchaseOrder {
+  id                Int                 @id @default(autoincrement())
+  company_id        Int
+  company           Company             @relation(fields: [company_id], references: [id])
+  po_number         String
+  project_id        Int?
+  project           Project?            @relation(fields: [project_id], references: [id])
+  phase_id          Int?
+  supplier_id       Int?
+  supplier          Supplier?           @relation(fields: [supplier_id], references: [id])
+  supplier_name     String
+  supplier_contact  String?
+  order_date        DateTime            @default(now())
+  expected_delivery DateTime
+  actual_delivery   DateTime?
+  status            PurchaseOrderStatus @default(DRAFT)
+  total_value       Decimal?            @db.Decimal(12, 2)
+  notes             String?
+  created_by_id     Int
+  created_by        User                @relation(fields: [created_by_id], references: [id])
+  created_at        DateTime            @default(now())
+  updated_at        DateTime            @updatedAt
+
+  lines        PurchaseOrderLine[]
+  transactions InventoryTransaction[]
+
+  @@unique([company_id, po_number])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderLine {
+  id                    Int           @id @default(autoincrement())
+  purchase_order_id     Int
+  purchase_order        PurchaseOrder @relation(fields: [purchase_order_id], references: [id], onDelete: Cascade)
+  inventory_item_id     Int
+  inventory_item        InventoryItem @relation(fields: [inventory_item_id], references: [id])
+  material_submittal_id Int?
+  description           String?
+  qty_ordered           Decimal       @db.Decimal(10, 3)
+  qty_received          Decimal       @default(0) @db.Decimal(10, 3)
+  unit_price            Decimal?      @db.Decimal(10, 2)
+  created_at            DateTime      @default(now())
+  updated_at            DateTime      @updatedAt
+
+  @@map("purchase_order_lines")
+}
+
+// ─── Attendance Model ─────────────────────────────────────────────────────────
+
+model AttendanceRecord {
+  id             Int              @id @default(autoincrement())
+  company_id     Int
+  company        Company          @relation(fields: [company_id], references: [id])
+  date           DateTime         @db.Date
+  employee_type  EmployeeType
+  user_id        Int?
+  user           User?            @relation("UserAttendance", fields: [user_id], references: [id])
+  worker_id      Int?
+  worker         Worker?          @relation(fields: [worker_id], references: [id])
+  project_id     Int?
+  project        Project?         @relation(fields: [project_id], references: [id])
+  status         AttendanceStatus
+  time_in        DateTime?
+  time_out       DateTime?
+  overtime_hours Decimal?         @default(0) @db.Decimal(4, 2)
+  notes          String?
+  marked_by_id   Int
+  marked_by      User             @relation("AttendanceMarker", fields: [marked_by_id], references: [id])
+  created_at     DateTime         @default(now())
+  updated_at     DateTime         @updatedAt
+
+  @@map("attendance_records")
+}
+
+// ─── Worker Assignment Models ─────────────────────────────────────────────────
+
+model WorkerProjectAssignment {
+  id           Int                    @id @default(autoincrement())
+  worker_id    Int
+  worker       Worker                 @relation(fields: [worker_id], references: [id])
+  project_id   Int
+  project      Project                @relation(fields: [project_id], references: [id])
+  phase_id     Int?
+  start_date   DateTime               @db.Date
+  end_date     DateTime?              @db.Date
+  role         WorkerProjectRole
+  status       WorkerAssignmentStatus @default(ACTIVE)
+  assigned_by_id Int
+  assigned_by  User                   @relation(fields: [assigned_by_id], references: [id])
+  notes        String?
+  created_at   DateTime               @default(now())
+  updated_at   DateTime               @updatedAt
+
+  @@map("worker_project_assignments")
+}
+
+model ProjectApproval {
+  id             Int                   @id @default(autoincrement())
+  project_id     Int
+  project        Project               @relation(fields: [project_id], references: [id])
+  approval_type  ProjectApprovalType
+  status         ProjectApprovalStatus @default(PENDING)
+  submitted_date DateTime?             @db.Date
+  approved_date  DateTime?             @db.Date
+  expiry_date    DateTime?             @db.Date
+  reference_no   String?
+  issued_by      String?
+  notes          String?
+  updated_by_id  Int?
+  updated_by     User?                 @relation(fields: [updated_by_id], references: [id])
+  created_at     DateTime              @default(now())
+  updated_at     DateTime              @updatedAt
+
+  @@map("project_approvals")
 }
